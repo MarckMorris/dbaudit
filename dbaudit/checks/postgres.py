@@ -29,6 +29,7 @@ class SslEnabled(Check):
     title = "Connections are encrypted with TLS"
     severity = Severity.CRITICAL
     category = "security"
+    cis = "CIS PostgreSQL: connection settings, TLS in transit"
     engines = PG
 
     def run(self, conn: Any) -> Finding:
@@ -46,6 +47,7 @@ class NoTrustAuth(Check):
     title = "No host rule uses trust authentication"
     severity = Severity.CRITICAL
     category = "security"
+    cis = "CIS PostgreSQL: host-based authentication methods"
     engines = PG
 
     def run(self, conn: Any) -> Finding:
@@ -67,6 +69,7 @@ class ScramPasswords(Check):
     title = "Passwords are hashed with SCRAM-SHA-256"
     severity = Severity.HIGH
     category = "security"
+    cis = "CIS PostgreSQL: password storage and hashing"
     engines = PG
 
     def run(self, conn: Any) -> Finding:
@@ -85,6 +88,7 @@ class SuperuserCount(Check):
     title = "Superuser accounts are limited"
     severity = Severity.HIGH
     category = "security"
+    cis = "CIS PostgreSQL: least privilege for roles"
     engines = PG
 
     MAX = 2
@@ -105,6 +109,7 @@ class BackupWalLevel(Check):
     title = "WAL level supports point-in-time recovery"
     severity = Severity.HIGH
     category = "backups"
+    cis = "CIS PostgreSQL: write-ahead log configuration"
     engines = PG
 
     def run(self, conn: Any) -> Finding:
@@ -123,6 +128,7 @@ class ArchiveMode(Check):
     title = "WAL archiving is enabled"
     severity = Severity.HIGH
     category = "backups"
+    cis = "CIS PostgreSQL: WAL archiving and recovery"
     engines = PG
 
     def run(self, conn: Any) -> Finding:
@@ -141,6 +147,7 @@ class ConnectionHeadroom(Check):
     title = "Connection pool has headroom"
     severity = Severity.MEDIUM
     category = "capacity"
+    cis = "CIS PostgreSQL: connection limits"
     engines = PG
 
     THRESHOLD = 0.8
@@ -163,6 +170,7 @@ class StatStatementsAvailable(Check):
     title = "Query statistics are collected"
     severity = Severity.MEDIUM
     category = "observability"
+    cis = "CIS PostgreSQL: query statistics collection"
     engines = PG
 
     def run(self, conn: Any) -> Finding:
@@ -185,6 +193,7 @@ class SlowQueryLogging(Check):
     title = "Slow queries are logged"
     severity = Severity.LOW
     category = "observability"
+    cis = "CIS PostgreSQL: logging of statement duration"
     engines = PG
 
     def run(self, conn: Any) -> Finding:
@@ -207,6 +216,7 @@ class ReplicationConfigured(Check):
     title = "At least one replica is streaming"
     severity = Severity.MEDIUM
     category = "high-availability"
+    cis = "CIS PostgreSQL: replication configuration"
     engines = PG
 
     def run(self, conn: Any) -> Finding:
