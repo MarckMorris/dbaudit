@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dbaudit"
+version = "0.1.0"
+description = "Production-readiness checks for PostgreSQL, MySQL and Redis"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Marcos Morris", email = "marck.morris.pro@gmail.com" }]
+keywords = ["database", "postgresql", "sre", "devops", "audit", "reliability", "ci"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: System Administrators",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Topic :: Database",
+  "Topic :: System :: Monitoring",
+]
+dependencies = []
+
+[project.optional-dependencies]
+postgres = ["psycopg2-binary>=2.9"]
+dev = ["pytest>=8.0", "psycopg2-binary>=2.9"]
+
+[project.scripts]
+dbaudit = "dbaudit.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/MarckMorris/dbaudit"
+Issues = "https://github.com/MarckMorris/dbaudit/issues"
+
+[tool.setuptools.packages.find]
+include = ["dbaudit*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
