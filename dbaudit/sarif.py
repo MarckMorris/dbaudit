@@ -106,7 +106,7 @@ def _result(report: Report, finding: Finding, index: int, location: str) -> dict
         "partialFingerprints": {"dbauditCheck/v1": _fingerprint(report, finding)},
         "properties": {
             "engine": report.engine,
-            "platform": report.platform.value,
+            "platform": report.platform,
             "category": finding.category,
         },
     }
@@ -157,12 +157,12 @@ def to_sarif(report: Report, location: str = "database") -> dict[str, Any]:
                     }
                 },
                 "automationDetails": {
-                    "id": f"dbaudit/{report.engine}/{report.platform.value}"
+                    "id": f"dbaudit/{report.engine}/{report.platform}"
                 },
                 "results": results,
                 "properties": {
                     "score": report.score,
-                    "platform": report.platform.value,
+                    "platform": report.platform,
                 },
             }
         ],
