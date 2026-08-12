@@ -2,6 +2,7 @@
 
 import pytest
 
+from dbaudit.checks import postgres as _postgres  # noqa: F401  registers checks
 from dbaudit.core import Check, Finding, Report, Severity, checks_for, run_checks
 
 
