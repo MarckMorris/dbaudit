@@ -6,7 +6,7 @@
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-Every open-source PostgreSQL hardening tool reads \`postgresql.conf\` and \`pg_hba.conf\` off the server's
+Every open-source PostgreSQL hardening tool reads `postgresql.conf` and `pg_hba.conf` off the server's
 filesystem. That assumption breaks on RDS, Aurora, Cloud SQL and Azure Database — which is where most
 production PostgreSQL now runs. You cannot SSH into a managed instance, so the tooling that would tell
 you whether it is configured correctly cannot run at all.
@@ -62,12 +62,12 @@ $ echo $?
 
 Three things there do not appear in other tools:
 
-**\`platform  aws-rds\`** — detected from the server, not configured by hand.
+**`platform  aws-rds`** — detected from the server, not configured by hand.
 
-**\`fix: Set rds.force_ssl = 1 in the DB parameter group\`** — not "edit postgresql.conf", which is
+**`fix: Set rds.force_ssl = 1 in the DB parameter group`** — not "edit postgresql.conf", which is
 impossible on RDS. Remediation that cannot be followed is the same as no remediation.
 
-**\`SKIP — RDS does not expose pg_hba.conf\`** — a control the provider does not expose is reported as
+**`SKIP — RDS does not expose pg_hba.conf`** — a control the provider does not expose is reported as
 not applicable rather than counted as a failure. Scoring a managed database against controls it cannot
 implement produces a number nobody acts on.
 
@@ -120,7 +120,7 @@ dbaudit "postgres://..." --baseline dbaudit-baseline.json --fail-on high
 ```
 
 Waived findings are not hidden. They stay in the JSON and, in SARIF, are emitted with a
-\`suppressions\` entry, so the debt remains visible and auditable instead of disappearing.
+`suppressions` entry, so the debt remains visible and auditable instead of disappearing.
 
 ### In GitHub Actions
 
@@ -139,7 +139,7 @@ Waived findings are not hidden. They stay in the JSON and, in SARIF, are emitted
     category: dbaudit
 ```
 
-This repository's own CI does exactly that against a live \`postgres:16\` container on every push.
+This repository's own CI does exactly that against a live `postgres:16` container on every push.
 
 ## Checks
 
@@ -169,29 +169,29 @@ It is a triage signal, not a compliance certificate.
 
 | Platform | Detected by | Remediation | pg_hba.conf checks |
 | --- | --- | --- | --- |
-| Amazon Aurora | \`aurora_version()\` | Cluster parameter group | Not applicable |
-| Amazon RDS | \`rds.*\` in \`pg_settings\` | DB parameter group | Not applicable |
-| Google Cloud SQL | \`cloudsql.*\` in \`pg_settings\` | Database flags | Not applicable |
-| Azure Database | \`azure.*\` in \`pg_settings\` | Server parameters | Not applicable |
-| Self-hosted | Fallback | \`postgresql.conf\` | Checked |
+| Amazon Aurora | `aurora_version()` | Cluster parameter group | Not applicable |
+| Amazon RDS | `rds.*` in `pg_settings` | DB parameter group | Not applicable |
+| Google Cloud SQL | `cloudsql.*` in `pg_settings` | Database flags | Not applicable |
+| Azure Database | `azure.*` in `pg_settings` | Server parameters | Not applicable |
+| Self-hosted | Fallback | `postgresql.conf` | Checked |
 
-Aurora is probed before RDS, because an Aurora cluster also exposes the \`rds\` namespace and the more
+Aurora is probed before RDS, because an Aurora cluster also exposes the `rds` namespace and the more
 specific signal has to win. A failed probe rolls the transaction back before the next one runs, so a
 detection attempt never poisons the session for the checks that follow.
 
 ## Design notes
 
-**Read-only, always.** Every check is a \`SELECT\` or a \`SHOW\`. The tool is safe to point at production,
+**Read-only, always.** Every check is a `SELECT` or a `SHOW`. The tool is safe to point at production,
 which is the only place the answers are interesting.
 
 **A broken check never aborts the audit.** If a view is missing or a role lacks permission, that check is
 recorded as not applicable with the error attached, and the remaining nine still report.
 
-**Platform logic lives in one module.** Checks describe what good looks like; \`platform.py\` owns what to
+**Platform logic lives in one module.** Checks describe what good looks like; `platform.py` owns what to
 do about it where. Adding a provider means adding entries to two dictionaries, not editing ten checks.
 
-**Adding a check is a class.** Subclass \`Check\`, declare \`id\`, \`title\`, \`severity\`, \`category\` and
-\`cis\`, implement \`run\`, decorate with \`@register\`. The registry picks it up by engine.
+**Adding a check is a class.** Subclass `Check`, declare `id`, `title`, `severity`, `category` and
+`cis`, implement `run`, decorate with `@register`. The registry picks it up by engine.
 
 ## Scope
 
@@ -213,9 +213,9 @@ pip install -e ".[dev]"
 pytest --cov=dbaudit
 ```
 
-114 tests, 97% line coverage. The suite runs without a database: \`tests/fakes.py\` provides an in-memory
+114 tests, 97% line coverage. The suite runs without a database: `tests/fakes.py` provides an in-memory
 PostgreSQL whose query responses are declared per scenario, including which statements each managed
-platform refuses to answer. CI additionally audits a real \`postgres:16\` container on Python 3.10, 3.11
+platform refuses to answer. CI additionally audits a real `postgres:16` container on Python 3.10, 3.11
 and 3.12.
 
 ## License
