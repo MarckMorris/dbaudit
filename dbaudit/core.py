@@ -1,10 +1,12 @@
-"""Core data model and check registry for dbaudit."""
+"""Core data model, scoring and check registry for dbaudit."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Iterator
+
+from dbaudit.platform import Platform, not_applicable_reason, remediation_for
 
 
 class Severity(str, Enum):
@@ -18,12 +20,10 @@ class Severity(str, Enum):
 
     @property
     def rank(self) -> int:
-        """Higher rank means more serious."""
         return {"info": 0, "low": 1, "medium": 2, "high": 3, "critical": 4}[self.value]
 
     @property
     def penalty(self) -> int:
-        """Points deducted from the score when a check of this severity fails."""
         return {"info": 0, "low": 3, "medium": 10, "high": 20, "critical": 40}[self.value]
 
     def __lt__(self, other: "Severity") -> bool:  # type: ignore[override]
@@ -41,6 +41,14 @@ class Finding:
     detail: str = ""
     remediation: str = ""
     category: str = "general"
+    cis: str = ""
+    applicable: bool = True
+    suppressed: bool = False
+
+    @property
+    def counts_against_score(self) -> bool:
+        """A finding only costs points when it failed, applies and is not waived."""
+        return not self.passed and self.applicable and not self.suppressed
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -48,9 +56,12 @@ class Finding:
             "title": self.title,
             "severity": self.severity.value,
             "passed": self.passed,
+            "applicable": self.applicable,
+            "suppressed": self.suppressed,
             "detail": self.detail,
             "remediation": self.remediation,
             "category": self.category,
+            "cis": self.cis,
         }
 
 
@@ -60,6 +71,7 @@ class Report:
 
     target: str = ""
     engine: str = ""
+    platform: str = Platform.UNKNOWN.value
     findings: list[Finding] = field(default_factory=list)
 
     def add(self, finding: Finding) -> None:
@@ -73,27 +85,31 @@ class Report:
 
     @property
     def failures(self) -> list[Finding]:
-        return [f for f in self.findings if not f.passed]
+        """Failures that actually count: applicable and not waived."""
+        return [f for f in self.findings if f.counts_against_score]
 
     @property
     def passes(self) -> list[Finding]:
         return [f for f in self.findings if f.passed]
 
     @property
+    def skipped(self) -> list[Finding]:
+        return [f for f in self.findings if not f.applicable or f.suppressed]
+
+    @property
     def score(self) -> int:
-        """A 0-100 readiness score. Starts at 100, deducts per failed check."""
+        """A 0-100 readiness score. Starts at 100, deducts per counted failure."""
         penalty = sum(f.severity.penalty for f in self.failures)
         return max(0, 100 - penalty)
 
     @property
     def worst(self) -> Severity | None:
-        """The most serious severity among failures, or None if all passed."""
         if not self.failures:
             return None
         return max((f.severity for f in self.failures), key=lambda s: s.rank)
 
     def exceeds(self, threshold: Severity) -> bool:
-        """True when any failure is at or above the given severity."""
+        """True when any counted failure is at or above the given severity."""
         worst = self.worst
         return worst is not None and worst.rank >= threshold.rank
 
@@ -107,11 +123,13 @@ class Report:
         return {
             "target": self.target,
             "engine": self.engine,
+            "platform": self.platform,
             "score": self.score,
             "worst_severity": self.worst.value if self.worst else None,
             "total": len(self.findings),
             "passed": len(self.passes),
             "failed": len(self.failures),
+            "skipped": len(self.skipped),
             "findings": [f.to_dict() for f in self.findings],
         }
 
@@ -123,6 +141,7 @@ class Check:
     title: str = ""
     severity: Severity = Severity.MEDIUM
     category: str = "general"
+    cis: str = ""
     engines: tuple[str, ...] = ()
 
     def run(self, conn: Any) -> Finding:
@@ -137,6 +156,7 @@ class Check:
             detail=detail,
             remediation=remediation,
             category=self.category,
+            cis=self.cis,
         )
 
 
@@ -158,14 +178,27 @@ def checks_for(engine: str) -> list[type[Check]]:
     return [c for c in REGISTRY if not c.engines or engine in c.engines]
 
 
-def run_checks(conn: Any, engine: str, target: str = "") -> Report:
-    """Run every applicable check against a live connection."""
-    report = Report(target=target, engine=engine)
+def run_checks(
+    conn: Any,
+    engine: str,
+    target: str = "",
+    platform: Platform = Platform.UNKNOWN,
+    baseline: set[str] | None = None,
+) -> Report:
+    """Run every applicable check and adapt the result to the platform.
+
+    Two adjustments happen here rather than inside each check. A check that the
+    platform does not expose is marked not applicable instead of failing, and
+    remediation text is rewritten for the platform so the advice is actionable.
+    """
+    waived = baseline or set()
+    report = Report(target=target, engine=engine, platform=platform.value)
+
     for cls in checks_for(engine):
         check = cls()
         try:
-            report.add(check.run(conn))
-        except Exception as exc:  # a broken check must not abort the audit
+            finding = check.run(conn)
+        except Exception as exc:  # a broken check must never abort the audit
             report.add(
                 Finding(
                     check_id=cls.id,
@@ -174,6 +207,26 @@ def run_checks(conn: Any, engine: str, target: str = "") -> Report:
                     passed=True,
                     detail=f"check could not run: {exc}",
                     category=cls.category,
+                    cis=cls.cis,
+                    applicable=False,
                 )
             )
+            continue
+
+        reason = not_applicable_reason(finding.check_id, platform)
+        report.add(
+            Finding(
+                check_id=finding.check_id,
+                title=finding.title,
+                severity=finding.severity,
+                passed=finding.passed,
+                detail=f"{reason}" if reason else finding.detail,
+                remediation=remediation_for(finding.check_id, platform, finding.remediation),
+                category=finding.category,
+                cis=finding.cis,
+                applicable=reason is None,
+                suppressed=finding.check_id in waived,
+            )
+        )
+
     return report
